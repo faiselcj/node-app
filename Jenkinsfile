@@ -1,51 +1,47 @@
 pipeline {
 
-    agent {
-        docker {
-            image 'node:18'
-            args '-u root'
-        }
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "yourdockerhubusername/node-app"
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                checkout scm
+                git 'https://github.com/faiselcj/node-app.git'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
-                sh 'npm install'
+                sh 'docker build -t $DOCKER_IMAGE:latest .'
             }
         }
 
-        stage('Run App') {
+        stage('Push to DockerHub') {
             steps {
-                sh 'node app.js'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:latest
+                    '''
+                }
             }
         }
 
-        stage('Show Date') {
-            steps {
-                sh 'date'
-            }
-        }
-
-        stage('Create Artifact') {
+        stage('Deploy Container') {
             steps {
                 sh '''
-                apt-get update
-                apt-get install -y zip
-                zip app.zip *
+                docker stop node-app || true
+                docker rm node-app || true
+                docker run -d -p 3000:3000 --name node-app $DOCKER_IMAGE:latest
                 '''
-            }
-        }
-
-        stage('Archive Artifact') {
-            steps {
-                archiveArtifacts artifacts: 'app.zip'
             }
         }
     }

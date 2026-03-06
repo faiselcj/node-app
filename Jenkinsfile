@@ -3,9 +3,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "yourdockerhubusername/node-app"
-    }
-
+    DOCKER_IMAGE = "faisel05/node-app"
+}
     stages {
 
         stage('Checkout Code') {
